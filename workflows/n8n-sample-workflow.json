@@ -19,9 +19,9 @@
         300
       ],
       "parameters": {
-        "command": "cd /path/to/youtube_post_repeater && python3 app.py --source primary --channel https://www.youtube.com/@CHANNEL/community --limit 3 --json --state-file ./state.json --log-file ./logs/latest.jsonl"
+        "command": "bash -lc 'cd /workspace/youtube_post_repeater && python3 app.py --source primary --channel https://www.youtube.com/@CHANNEL/community --limit 3 --json --state-file ./state.sqlite3 --state-backend sqlite --log-file ./logs/latest.jsonl; status=$?; if [ \"$status\" -eq 10 ]; then exit 0; fi; exit \"$status\"'"
       },
-      "notes": "stdout should be the JSON payload returned by app.py."
+      "notes": "Runs inside a Dockerized n8n container that has python3 installed and this repo mounted at /workspace/youtube_post_repeater. Exit code 10 is converted to success so n8n can stop quietly when there are no new posts."
     },
     {
       "name": "Expand Posts",

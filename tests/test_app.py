@@ -99,6 +99,31 @@ class AppCliTests(unittest.TestCase):
             payload = json.loads(second.stdout)
             self.assertEqual(payload["posts"], [])
 
+    def test_sqlite_state_backend_dedupes_to_exit_10(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_file = Path(tmpdir) / "state.sqlite3"
+            args = (
+                "--source",
+                "primary",
+                "--channel",
+                "https://www.youtube.com/@example/community",
+                "--limit",
+                "3",
+                "--json",
+                "--fixture-file",
+                str(FIXTURES / "primary_raw.json"),
+                "--state-file",
+                str(state_file),
+                "--state-backend",
+                "sqlite",
+            )
+            first = self.run_app(*args)
+            second = self.run_app(*args)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertEqual(second.returncode, 10, second.stderr)
+            payload = json.loads(second.stdout)
+            self.assertEqual(payload["posts"], [])
+
     def test_backup_fixture_normalizes_fallback_id(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             state_file = Path(tmpdir) / "state.json"

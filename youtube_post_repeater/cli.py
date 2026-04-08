@@ -23,6 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--limit", type=int, default=3)
     parser.add_argument("--json", action="store_true", dest="emit_json")
     parser.add_argument("--state-file", default="state.json")
+    parser.add_argument("--state-backend", choices=["auto", "json", "sqlite"], default="auto")
     parser.add_argument("--fixture-file")
     parser.add_argument("--log-file")
     return parser
@@ -82,7 +83,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     logger = JsonLogger(Path(args.log_file) if args.log_file else None)
-    state_store = StateStore(Path(args.state_file))
+    state_store = StateStore(Path(args.state_file), backend=args.state_backend)
     request = FetchRequest(
         channel=args.channel,
         limit=args.limit,

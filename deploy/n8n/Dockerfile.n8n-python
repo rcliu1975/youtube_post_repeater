@@ -1,0 +1,14 @@
+FROM python:3.12-alpine AS python-runtime
+
+FROM n8nio/n8n
+
+USER root
+COPY --from=python-runtime /lib /lib
+COPY --from=python-runtime /usr/local /usr/local
+COPY --from=python-runtime /usr/lib /usr/lib
+RUN ln -sf /usr/local/bin/python3 /usr/local/bin/python \
+    && ln -sf /usr/local/bin/pip3 /usr/local/bin/pip \
+    && mkdir -p /usr/bin \
+    && ln -sf /usr/local/bin/python3 /usr/bin/python3 \
+    && /usr/local/bin/pip install --no-cache-dir post-archiver-improved==0.4.0
+USER node

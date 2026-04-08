@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+STATE_FILE="/home/roger/.n8n/current_webhook_url"
+NGROK_API="http://127.0.0.1:4040/api/tunnels"
+N8N_CONTAINER="n8n"
+N8N_IMAGE="n8n-python:latest"
+N8N_DATA_DIR="/home/roger/.n8n"
+YPR_REPO_DIR="/home/roger/WorkSpace/youtube_post_repeater"
+YPR_CONTAINER_DIR="/workspace/youtube_post_repeater"
+YPR_COMPAT_DIR="/home/roger/WorkSpace/youtube_post_repeater"
+
+PUBLIC_URL=""
+for i in {1..20}; do
+  PUBLIC_URL="$(curl -fsS "$NGROK_API" 2>/dev/null | grep -o 'https://[^"]*' | head -n 1 || true)"
+  if [ -n "$PUBLIC_URL" ]; then
+    break
+  fi
+  sleep 2
+done
+
+if [ -z "${PUBLIC_URL:-}" ]; then
+  echo "ERROR: Cannot get ngrok public_url from $NGROK_API"
+  exit 1
+fi
+
+echo "Detected ngrok URL: $PUBLIC_URL"
+
+OLD_URL=""
+if [ -f "$STATE_FILE" ]; then
+  OLD_URL="$(cat "$STATE_FILE" || true)"
+fi
+
+CONTAINER_EXISTS="no"
+if docker ps -a --format '{{.Names}}' | grep -qx "$N8N_CONTAINER"; then
+  CONTAINER_EXISTS="yes"
+fi
+
+if [ "$PUBLIC_URL" = "$OLD_URL" ] && [ "$CONTAINER_EXISTS" = "yes" ]; then
+  echo "Webhook URL unchanged. No rebuild needed."
+  if ! docker ps --format '{{.Names}}' | grep -qx "$N8N_CONTAINER"; then
+    echo "Container exists but is not running. Starting it..."
+    docker start "$N8N_CONTAINER"
+  fi
+  exit 0
+fi
+
+echo "Webhook URL changed or container missing. Recreating n8n..."
+
+if docker ps -a --format '{{.Names}}' | grep -qx "$N8N_CONTAINER"; then
+  docker stop "$N8N_CONTAINER" || true
+  docker rm "$N8N_CONTAINER" || true
+fi
+
+docker run -d \
+  --name "$N8N_CONTAINER" \
+  --restart always \
+  -p 5678:5678 \
+  -e N8N_BASIC_AUTH_ACTIVE=true \
+  -e N8N_BASIC_AUTH_USER=admin \
+  -e N8N_BASIC_AUTH_PASSWORD=123456 \
+  -e N8N_SECURE_COOKIE=false \
+  -e WEBHOOK_URL="$PUBLIC_URL" \
+  -v "$N8N_DATA_DIR:/home/node/.n8n" \
+  -v "$YPR_REPO_DIR:$YPR_CONTAINER_DIR" \
+  -v "$YPR_REPO_DIR:$YPR_COMPAT_DIR" \
+  "$N8N_IMAGE"
+
+mkdir -p "$(dirname "$STATE_FILE")"
+echo "$PUBLIC_URL" > "$STATE_FILE"
+
+echo "n8n recreated with WEBHOOK_URL=$PUBLIC_URL"

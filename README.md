@@ -11,7 +11,7 @@ This repository currently implements:
 - A CLI entrypoint: `python app.py`
 - A stable normalized JSON response
 - Primary and backup source adapters behind one interface
-- Deduplication using `state.json`
+- Deduplication using JSON or SQLite state storage
 - Structured JSON logging
 - Exit codes compatible with scheduler / n8n workflows
 - Telegram-ready routing fields per post
@@ -34,8 +34,22 @@ Useful options:
 - `--limit <n>`
 - `--json`
 - `--state-file <path>`
+- `--state-backend auto|json|sqlite`
 - `--fixture-file <path>` for local development and tests
 - `--log-file <path>`
+
+## State storage
+
+State storage defaults to `auto` mode:
+
+- `.json` paths use JSON storage
+- `.db`, `.sqlite`, `.sqlite3` paths use SQLite storage
+
+You can also force a backend explicitly:
+
+```bash
+python app.py --state-file ./state.sqlite3 --state-backend sqlite
+```
 
 ## Exit codes
 
@@ -104,20 +118,48 @@ logic to map that JSON into the unified schema.
 Recommended `Execute Command` step:
 
 ```bash
-cd /path/to/youtube_post_repeater
-python app.py \
+bash -lc 'cd /workspace/youtube_post_repeater && \
+python3 app.py \
   --source primary \
   --channel https://www.youtube.com/@CHANNEL/community \
   --limit 3 \
   --json \
-  --state-file ./state.json \
-  --log-file ./logs/latest.jsonl
+  --state-file ./state.sqlite3 \
+  --state-backend sqlite \
+  --log-file ./logs/latest.jsonl; \
+status=$?; \
+if [ "$status" -eq 10 ]; then exit 0; fi; \
+exit "$status"'
 ```
+
+If your n8n runs in Docker, the container must have:
+
+- `python3` available
+- this repository mounted into the container
+
+This repository includes a minimal n8n image and rebuild script template:
+
+- `deploy/n8n/Dockerfile.n8n-python`
+- `deploy/n8n/update-n8n-webhook.sh.example`
+
+Example image build:
+
+```bash
+docker build -t n8n-python:latest -f deploy/n8n/Dockerfile.n8n-python .
+```
+
+The example webhook rebuild script mounts:
+
+- `/home/roger/.n8n` -> `/home/node/.n8n`
+- `/home/roger/WorkSpace/youtube_post_repeater` -> `/workspace/youtube_post_repeater`
+- `/home/roger/WorkSpace/youtube_post_repeater` -> `/home/roger/WorkSpace/youtube_post_repeater`
+
+The second repository mount preserves the original virtualenv shebang path used by `.venv/bin/post-archiver`.
 
 Expected behavior:
 
 - Exit code `0`: proceed to Telegram routing
-- Exit code `10`: no new posts, stop quietly
+- Exit code `10`: no new posts, but the wrapper command above converts it to `0` so n8n does not fail the workflow
 - Exit code `20`: record error and alert if needed
 
 Telegram routing suggestion:
@@ -145,5 +187,5 @@ See:
 ## Tests
 
 ```bash
-python -m unittest discover -s tests -p 'test_*.py'
+python3 -m unittest discover -s tests -p 'test_*.py'
 ```
