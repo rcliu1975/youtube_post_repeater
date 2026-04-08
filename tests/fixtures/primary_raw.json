@@ -1,0 +1,28 @@
+{
+  "channel": "Example Channel",
+  "posts": [
+    {
+      "post_id": "abc123",
+      "post_url": "https://www.youtube.com/post/abc123",
+      "published_text": "2 hours ago",
+      "text": "Tonight at 8 PM",
+      "images": [
+        "https://example.com/image-1.jpg"
+      ],
+      "video_links": [],
+      "is_members_only": false
+    },
+    {
+      "post_id": "def456",
+      "post_url": "https://www.youtube.com/post/def456",
+      "published_text": "1 hour ago",
+      "text": "Album post",
+      "images": [
+        "https://example.com/image-2.jpg",
+        "https://example.com/image-3.jpg"
+      ],
+      "video_links": [],
+      "is_members_only": false
+    }
+  ]
+}

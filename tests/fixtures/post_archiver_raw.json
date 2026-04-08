@@ -1,0 +1,38 @@
+{
+  "channel_id": "UC0lbAQVpenvfA2QqzsRtL_g",
+  "posts_count": 2,
+  "posts": [
+    {
+      "post_id": "Ugkxz4v7dtISqSnRtP22tXb7UrRXGZkru8Iw",
+      "content": "First archived post",
+      "timestamp": "1 hour ago",
+      "members_only": false,
+      "author": "游庭皓的財經皓角",
+      "images": [
+        {
+          "src": "https://example.com/archiver-1.jpg",
+          "width": 1084,
+          "height": 1084
+        }
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "post_id": "UgkxGmHbjHzWk-G8oswJeH4GQGypSA_5qZdy",
+      "content": "Second archived post",
+      "timestamp": "2 hours ago",
+      "members_only": true,
+      "author": "游庭皓的財經皓角",
+      "images": [
+        {
+          "src": "https://example.com/archiver-2.jpg"
+        }
+      ],
+      "links": [
+        "https://youtube.com/watch?v=example"
+      ],
+      "comments": []
+    }
+  ]
+}

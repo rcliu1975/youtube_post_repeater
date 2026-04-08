@@ -1,0 +1,247 @@
+{
+  "name": "youtube_post_repeater_mvp",
+  "description": "Sample n8n workflow showing how to route the CLI output by delivery_type and send follow-up chunks when captions are truncated.",
+  "nodes": [
+    {
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        200,
+        300
+      ],
+      "notes": "Run on your preferred interval."
+    },
+    {
+      "name": "Run CLI",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "command": "cd /path/to/youtube_post_repeater && python3 app.py --source primary --channel https://www.youtube.com/@CHANNEL/community --limit 3 --json --state-file ./state.json --log-file ./logs/latest.jsonl"
+      },
+      "notes": "stdout should be the JSON payload returned by app.py."
+    },
+    {
+      "name": "Expand Posts",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        700,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const payload = JSON.parse($json.stdout || '{}');\nif (!payload.ok) {\n  throw new Error(payload.error || 'CLI returned an error');\n}\nreturn (payload.posts || []).map(post => ({\n  json: {\n    channel: payload.channel,\n    fetched_at: payload.fetched_at,\n    ...post,\n  },\n}));"
+      },
+      "notes": "Turn payload.posts[] into one item per post."
+    },
+    {
+      "name": "Route Delivery Type",
+      "type": "n8n-nodes-base.switch",
+      "position": [
+        960,
+        300
+      ],
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{$json.delivery_type}}",
+        "rules": [
+          {
+            "operation": "equal",
+            "value2": "message"
+          },
+          {
+            "operation": "equal",
+            "value2": "photo"
+          },
+          {
+            "operation": "equal",
+            "value2": "media_group"
+          }
+        ]
+      },
+      "notes": "Output 0=message, 1=photo, 2=media_group."
+    },
+    {
+      "name": "Prepare Message Chunks",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1220,
+        120
+      ],
+      "parameters": {
+        "jsCode": "return ($json.message_chunks || []).map(chunk => ({ json: { text: chunk, post_id: $json.post_id } }));"
+      },
+      "notes": "Use for delivery_type=message."
+    },
+    {
+      "name": "Send Message",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        1480,
+        120
+      ],
+      "parameters": {
+        "operation": "sendMessage",
+        "text": "={{$json.text}}"
+      },
+      "notes": "Send each chunk as its own Telegram message."
+    },
+    {
+      "name": "Send Photo",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        1220,
+        300
+      ],
+      "parameters": {
+        "operation": "sendPhoto",
+        "file": "={{$json.images[0]}}",
+        "caption": "={{$json.caption}}"
+      },
+      "notes": "Use for delivery_type=photo."
+    },
+    {
+      "name": "Send Media Group",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        1220,
+        480
+      ],
+      "parameters": {
+        "operation": "sendMediaGroup",
+        "mediaGroup": "={{$json.media}}"
+      },
+      "notes": "Use for delivery_type=media_group."
+    },
+    {
+      "name": "Prepare Follow-up Chunks",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1480,
+        390
+      ],
+      "parameters": {
+        "jsCode": "return ($json.followup_message_chunks || []).map(chunk => ({ json: { text: chunk, post_id: $json.post_id } }));"
+      },
+      "notes": "Only emits items when caption was truncated."
+    },
+    {
+      "name": "Send Follow-up Message",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        1740,
+        390
+      ],
+      "parameters": {
+        "operation": "sendMessage",
+        "text": "={{$json.text}}"
+      },
+      "notes": "Send extra text chunks after photo/media_group when needed."
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Run CLI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run CLI": {
+      "main": [
+        [
+          {
+            "node": "Expand Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Posts": {
+      "main": [
+        [
+          {
+            "node": "Route Delivery Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Delivery Type": {
+      "main": [
+        [
+          {
+            "node": "Prepare Message Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Photo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Media Group",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Message Chunks": {
+      "main": [
+        [
+          {
+            "node": "Send Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Photo": {
+      "main": [
+        [
+          {
+            "node": "Prepare Follow-up Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Media Group": {
+      "main": [
+        [
+          {
+            "node": "Prepare Follow-up Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Follow-up Chunks": {
+      "main": [
+        [
+          {
+            "node": "Send Follow-up Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

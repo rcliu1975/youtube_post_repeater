@@ -1,0 +1,13 @@
+{
+  "channel": "@example",
+  "posts": [
+    {
+      "text_content": "Backup source post",
+      "image_links": [
+        "https://example.com/backup.jpg"
+      ],
+      "post_link": "https://www.youtube.com/post/ghi789",
+      "published": "yesterday"
+    }
+  ]
+}
