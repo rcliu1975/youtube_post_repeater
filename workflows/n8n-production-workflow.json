@@ -188,7 +188,9 @@
         "operation": "sendPhoto",
         "chatId": "8567139854",
         "file": "={{$json.images[0]}}",
-        "caption": "={{$json.caption}}"
+        "additionalFields": {
+          "caption": "={{$json.caption}}"
+        }
       },
       "notes": "Use for delivery_type=photo. Attach your Telegram credentials after importing."
     },
