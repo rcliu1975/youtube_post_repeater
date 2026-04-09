@@ -6,4 +6,7 @@ venv/
 dist/
 build/
 state.json
+*.db
+*.sqlite
+*.sqlite3
 logs/

@@ -1,22 +1,13 @@
 {
-  "name": "youtube_post_repeater_mvp",
-  "description": "Sample n8n workflow for running the CLI, expanding posts, routing Telegram delivery by delivery_type, and sending follow-up chunks when captions are truncated. Set TELEGRAM_CHAT_ID and the YPR_* environment variables in the n8n container before enabling it.",
+  "name": "youtube_post_repeater_production",
+  "description": "Production-oriented n8n workflow for scheduled YouTube community scraping, Telegram delivery routing, and Telegram failure alerts. Configure TELEGRAM_CHAT_ID and the YPR_* environment variables in the n8n container before enabling it.",
   "nodes": [
-    {
-      "name": "Manual Trigger",
-      "type": "n8n-nodes-base.manualTrigger",
-      "position": [
-        200,
-        160
-      ],
-      "notes": "Use this branch during setup so you can test the workflow on demand from the n8n editor."
-    },
     {
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "position": [
         200,
-        300
+        230
       ],
       "notes": "Run on your preferred interval."
     },
@@ -30,7 +21,7 @@
       "parameters": {
         "command": "bash -lc 'cd /workspace/youtube_post_repeater && raw_output=$(YPR_PRIMARY_BIN=\"${YPR_PRIMARY_BIN:-/usr/local/bin/post-archiver}\" python3 app.py --source primary --channel \"${YPR_CHANNEL:?Missing YPR_CHANNEL}\" --limit \"${YPR_FETCH_LIMIT:-3}\" --json --state-file \"${YPR_STATE_FILE:-./state.sqlite3}\" --state-backend \"${YPR_STATE_BACKEND:-sqlite}\" --log-file \"${YPR_LOG_FILE:-./logs/latest.jsonl}\" 2>&1); status=$?; escaped_output=$(printf \"%s\" \"$raw_output\" | python3 -c \"import json,sys; print(json.dumps(sys.stdin.read()))\"); printf \"{\\\"status\\\":%s,\\\"stdout\\\":%s}\\n\" \"$status\" \"$escaped_output\"; exit 0'"
       },
-      "notes": "Runs inside a Dockerized n8n container that has python3 installed and this repo mounted at /workspace/youtube_post_repeater. Configure YPR_CHANNEL, YPR_FETCH_LIMIT, YPR_STATE_FILE, YPR_STATE_BACKEND, YPR_LOG_FILE, and optionally YPR_PRIMARY_BIN in the container environment. The node always exits successfully and passes the CLI exit status forward so the workflow can notify on real failures."
+      "notes": "Runs inside a Dockerized n8n container that has python3 installed and this repo mounted at /workspace/youtube_post_repeater. The node always exits successfully and passes the CLI exit status forward so the workflow can notify on real failures."
     },
     {
       "name": "Parse CLI Result",
@@ -203,17 +194,6 @@
     }
   ],
   "connections": {
-    "Manual Trigger": {
-      "main": [
-        [
-          {
-            "node": "Run CLI",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Schedule Trigger": {
       "main": [
         [

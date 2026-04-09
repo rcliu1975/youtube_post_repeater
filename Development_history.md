@@ -110,3 +110,33 @@ Known status:
 - Telegram delivery nodes still need to be finalized in n8n.
 - Backup scraper integration and longer-run production hardening are still
   future work.
+
+Additional follow-up work completed after the initial Docker integration:
+
+- Fixed adapter command delegation so `YPR_PRIMARY_COMMAND` and
+  `YPR_BACKUP_COMMAND` now accept full command strings with arguments instead
+  of only a bare executable path.
+- Added regression coverage for env-based command delegation to ensure the CLI
+  can wire external scrapers without depending on fixture files.
+- Updated README guidance to document the supported command-string format.
+- Expanded `workflows/n8n-sample-workflow.json` so it now includes:
+  - a `Manual Trigger` branch for editor-side testing
+  - `TELEGRAM_CHAT_ID` passthrough from n8n environment
+  - chat ID wiring on all Telegram delivery nodes
+  - `Run CLI` configuration driven by `YPR_*` environment variables instead of
+    hard-coded channel and state values
+- Added README steps for importing and finishing the sample n8n workflow.
+- Added `deploy/n8n/n8n.env.example` to document the recommended environment
+  variables for Dockerized n8n deployment.
+- Updated the example n8n rebuild script to pass `TELEGRAM_CHAT_ID` and the
+  `YPR_*` variables through to the container at startup.
+- Updated the example n8n rebuild script to auto-load the dedicated
+  `youtube-post-repeater.env` file before recreating the container.
+- Updated the sample n8n workflow so scraper failures no longer terminate the
+  workflow silently; they are now routed into a Telegram error-notification
+  branch using the same configured chat target.
+- Added `workflows/n8n-production-workflow.json` as a schedule-only variant of
+  the verified sample workflow so production imports do not include the
+  editor-only `Manual Trigger` branch.
+- Updated `.gitignore` so SQLite state files produced during local or n8n
+  execution no longer show up as untracked repository changes.

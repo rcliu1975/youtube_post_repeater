@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import subprocess
 import tempfile
 from dataclasses import dataclass
@@ -40,8 +41,11 @@ class BaseAdapter:
             return json.load(fh)
 
     def _run_command(self, command: str, request: FetchRequest) -> dict[str, Any]:
+        command_parts = shlex.split(command)
+        if not command_parts:
+            raise AdapterError(f"{self.source_name} adapter command is empty")
         completed = subprocess.run(
-            [command, request.channel, str(request.limit)],
+            [*command_parts, request.channel, str(request.limit)],
             check=False,
             capture_output=True,
             text=True,

@@ -9,6 +9,22 @@ N8N_DATA_DIR="/home/roger/.n8n"
 YPR_REPO_DIR="/home/roger/WorkSpace/youtube_post_repeater"
 YPR_CONTAINER_DIR="/workspace/youtube_post_repeater"
 YPR_COMPAT_DIR="/home/roger/WorkSpace/youtube_post_repeater"
+YPR_ENV_FILE="${YPR_ENV_FILE:-/home/roger/n8n-stack/youtube-post-repeater.env}"
+
+if [ -f "$YPR_ENV_FILE" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  . "$YPR_ENV_FILE"
+  set +a
+fi
+
+YPR_CHANNEL="${YPR_CHANNEL:-https://www.youtube.com/@CHANNEL/community}"
+YPR_FETCH_LIMIT="${YPR_FETCH_LIMIT:-3}"
+YPR_STATE_FILE="${YPR_STATE_FILE:-/workspace/youtube_post_repeater/state.sqlite3}"
+YPR_STATE_BACKEND="${YPR_STATE_BACKEND:-sqlite}"
+YPR_LOG_FILE="${YPR_LOG_FILE:-/workspace/youtube_post_repeater/logs/latest.jsonl}"
+YPR_PRIMARY_BIN="${YPR_PRIMARY_BIN:-/usr/local/bin/post-archiver}"
+TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-}"
 
 PUBLIC_URL=""
 for i in {1..20}; do
@@ -61,6 +77,13 @@ docker run -d \
   -e N8N_BASIC_AUTH_PASSWORD=123456 \
   -e N8N_SECURE_COOKIE=false \
   -e WEBHOOK_URL="$PUBLIC_URL" \
+  -e TELEGRAM_CHAT_ID="$TELEGRAM_CHAT_ID" \
+  -e YPR_CHANNEL="$YPR_CHANNEL" \
+  -e YPR_FETCH_LIMIT="$YPR_FETCH_LIMIT" \
+  -e YPR_STATE_FILE="$YPR_STATE_FILE" \
+  -e YPR_STATE_BACKEND="$YPR_STATE_BACKEND" \
+  -e YPR_LOG_FILE="$YPR_LOG_FILE" \
+  -e YPR_PRIMARY_BIN="$YPR_PRIMARY_BIN" \
   -v "$N8N_DATA_DIR:/home/node/.n8n" \
   -v "$YPR_REPO_DIR:$YPR_CONTAINER_DIR" \
   -v "$YPR_REPO_DIR:$YPR_COMPAT_DIR" \

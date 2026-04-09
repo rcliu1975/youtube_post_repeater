@@ -110,8 +110,15 @@ setting one of these environment variables:
 - `YPR_PRIMARY_COMMAND`
 - `YPR_BACKUP_COMMAND`
 
-The command must print JSON to stdout. The repository includes normalization
-logic to map that JSON into the unified schema.
+The command must print JSON to stdout. Command strings may include arguments,
+for example:
+
+```bash
+export YPR_PRIMARY_COMMAND="python3 /opt/scrapers/fetch_posts.py --format json"
+```
+
+The CLI appends `<channel> <limit>` to the configured command. The repository
+includes normalization logic to map that JSON into the unified schema.
 
 ## n8n integration
 
@@ -140,6 +147,7 @@ If your n8n runs in Docker, the container must have:
 This repository includes a minimal n8n image and rebuild script template:
 
 - `deploy/n8n/Dockerfile.n8n-python`
+- `deploy/n8n/n8n.env.example`
 - `deploy/n8n/update-n8n-webhook.sh.example`
 
 Example image build:
@@ -156,6 +164,28 @@ The example webhook rebuild script mounts:
 
 The second repository mount preserves the original virtualenv shebang path used by `.venv/bin/post-archiver`.
 
+Suggested environment variables for Docker n8n:
+
+```bash
+cp deploy/n8n/n8n.env.example /home/roger/n8n-stack/youtube-post-repeater.env
+```
+
+The example `update-n8n-webhook.sh.example` script will automatically load
+that file via `YPR_ENV_FILE` before starting the container.
+
+Populate at least:
+
+- `TELEGRAM_CHAT_ID`
+- `YPR_CHANNEL`
+
+Optional overrides:
+
+- `YPR_FETCH_LIMIT`
+- `YPR_STATE_FILE`
+- `YPR_STATE_BACKEND`
+- `YPR_LOG_FILE`
+- `YPR_PRIMARY_BIN`
+
 Expected behavior:
 
 - Exit code `0`: proceed to Telegram routing
@@ -168,6 +198,25 @@ Telegram routing suggestion:
 - `delivery_type == "photo"` -> Send Photo using `images[0]` and `caption`
 - `delivery_type == "media_group"` -> Send Media Group using `media`
 - if `followup_message_chunks` is non-empty, send those as one or more extra `Send Message` steps
+
+Suggested import flow for `workflows/n8n-sample-workflow.json`:
+
+1. Import the workflow JSON into n8n.
+2. Attach your Telegram credentials to all Telegram nodes.
+3. Set `TELEGRAM_CHAT_ID` and the `YPR_*` environment variables in the n8n
+   container environment, or replace those expressions with fixed values.
+4. Confirm the `Run CLI` node can read the configured environment variables.
+5. Test from the `Manual Trigger` branch first, then enable the schedule once
+   the Telegram output is correct.
+
+The sample workflow now includes a failure-notification branch:
+
+- CLI exit code `20`, or `ok: false` in the JSON payload, sends a Telegram
+  alert using the same `TELEGRAM_CHAT_ID`
+- CLI exit code `10` emits no post items and stops quietly without an alert
+
+For production deployment, import `workflows/n8n-production-workflow.json`
+after you have validated the same settings with the sample workflow.
 
 Telegram safety behavior:
 
@@ -183,6 +232,12 @@ See:
 - `tests/fixtures/backup_raw.json`
 - `tests/fixtures/expected_primary_output.json`
 - `workflows/n8n-sample-workflow.json`
+- `workflows/n8n-production-workflow.json`
+
+Workflow file roles:
+
+- `workflows/n8n-sample-workflow.json`: includes `Manual Trigger` for editor-side testing
+- `workflows/n8n-production-workflow.json`: schedule-only version intended for deployed use
 
 ## Tests
 
