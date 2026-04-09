@@ -142,3 +142,5 @@ Additional follow-up work completed after the initial Docker integration:
   execution no longer show up as untracked repository changes.
 - Corrected n8n execution commands from `bash -lc` to `sh -lc` after verifying
   the deployed `n8n-python:latest` container does not include `bash`.
+- Removed the obsolete `N8N_BASIC_AUTH_*` example environment variables from
+  the repo's n8n rebuild script template to match the live deployment model.

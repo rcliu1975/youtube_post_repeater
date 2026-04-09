@@ -72,9 +72,6 @@ docker run -d \
   --name "$N8N_CONTAINER" \
   --restart always \
   -p 5678:5678 \
-  -e N8N_BASIC_AUTH_ACTIVE=true \
-  -e N8N_BASIC_AUTH_USER=admin \
-  -e N8N_BASIC_AUTH_PASSWORD=123456 \
   -e N8N_SECURE_COOKIE=false \
   -e WEBHOOK_URL="$PUBLIC_URL" \
   -e TELEGRAM_CHAT_ID="$TELEGRAM_CHAT_ID" \
