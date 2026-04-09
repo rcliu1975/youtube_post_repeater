@@ -98,15 +98,9 @@
         1220,
         360
       ],
-      "credentials": {
-        "telegramApi": {
-          "id": "cSwsd3dn2T1Xo0tu",
-          "name": "Telegram account"
-        }
-      },
       "parameters": {
         "operation": "sendMessage",
-        "chatId": "8567139854",
+        "chatId": "REPLACE_WITH_TELEGRAM_CHAT_ID",
         "text": "={{$json.error_text}}"
       },
       "notes": "Sends a Telegram alert when the CLI returns a real failure."
@@ -167,15 +161,9 @@
         2000,
         50
       ],
-      "credentials": {
-        "telegramApi": {
-          "id": "cSwsd3dn2T1Xo0tu",
-          "name": "Telegram account"
-        }
-      },
       "parameters": {
         "operation": "sendMessage",
-        "chatId": "8567139854",
+        "chatId": "REPLACE_WITH_TELEGRAM_CHAT_ID",
         "text": "={{$json.text}}"
       },
       "notes": "Send each chunk as its own Telegram message. Attach your Telegram credentials after importing."
@@ -187,15 +175,9 @@
         1740,
         180
       ],
-      "credentials": {
-        "telegramApi": {
-          "id": "cSwsd3dn2T1Xo0tu",
-          "name": "Telegram account"
-        }
-      },
       "parameters": {
         "operation": "sendPhoto",
-        "chatId": "8567139854",
+        "chatId": "REPLACE_WITH_TELEGRAM_CHAT_ID",
         "file": "={{$json.images[0]}}",
         "additionalFields": {
           "caption": "={{$json.caption}}"
@@ -210,15 +192,9 @@
         1740,
         310
       ],
-      "credentials": {
-        "telegramApi": {
-          "id": "cSwsd3dn2T1Xo0tu",
-          "name": "Telegram account"
-        }
-      },
       "parameters": {
         "operation": "sendMediaGroup",
-        "chatId": "8567139854",
+        "chatId": "REPLACE_WITH_TELEGRAM_CHAT_ID",
         "mediaGroup": "={{$json.media}}"
       },
       "notes": "Use for delivery_type=media_group. Attach your Telegram credentials after importing."
@@ -245,15 +221,9 @@
         2260,
         245
       ],
-      "credentials": {
-        "telegramApi": {
-          "id": "cSwsd3dn2T1Xo0tu",
-          "name": "Telegram account"
-        }
-      },
       "parameters": {
         "operation": "sendMessage",
-        "chatId": "8567139854",
+        "chatId": "REPLACE_WITH_TELEGRAM_CHAT_ID",
         "text": "={{$json.text}}"
       },
       "notes": "Send extra text chunks after photo/media_group when needed."
