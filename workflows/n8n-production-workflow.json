@@ -19,54 +19,66 @@
         230
       ],
       "parameters": {
-        "command": "sh -lc 'cd /workspace/youtube_post_repeater && raw_output=$(YPR_PRIMARY_BIN=\"${YPR_PRIMARY_BIN:-/usr/local/bin/post-archiver}\" python3 app.py --source primary --channel \"${YPR_CHANNEL:?Missing YPR_CHANNEL}\" --limit \"${YPR_FETCH_LIMIT:-3}\" --json --state-file \"${YPR_STATE_FILE:-./state.sqlite3}\" --state-backend \"${YPR_STATE_BACKEND:-sqlite}\" --log-file \"${YPR_LOG_FILE:-./logs/latest.jsonl}\" 2>&1); status=$?; escaped_output=$(printf \"%s\" \"$raw_output\" | python3 -c \"import json,sys; print(json.dumps(sys.stdin.read()))\"); printf \"{\\\"status\\\":%s,\\\"stdout\\\":%s}\\n\" \"$status\" \"$escaped_output\"; exit 0'"
+        "command": "sh -lc 'cd /workspace/youtube_post_repeater && fixture_args=\"\"; state_file=\"${YPR_STATE_FILE:-./state.sqlite3}\"; if [ -n \"${YPR_FIXTURE_FILE:-}\" ]; then fixture_args=\" --fixture-file ${YPR_FIXTURE_FILE}\"; state_file=\"/tmp/ypr-fixture-state-$$.sqlite3\"; fi; raw_output=$(YPR_PRIMARY_BIN=\"${YPR_PRIMARY_BIN:-/usr/local/bin/post-archiver}\" python3 app.py --source primary --channel \"${YPR_CHANNEL:?Missing YPR_CHANNEL}\" --limit \"${YPR_FETCH_LIMIT:-3}\" --json --state-file \"${state_file}\" --state-backend \"${YPR_STATE_BACKEND:-sqlite}\" --log-file \"${YPR_LOG_FILE:-./logs/latest.jsonl}\"${fixture_args} 2>&1); status=$?; escaped_output=$(printf \"%s\" \"$raw_output\" | python3 -c \"import json,sys; print(json.dumps(sys.stdin.read()))\"); printf \"{\\\"status\\\":%s,\\\"stdout\\\":%s}\\n\" \"$status\" \"$escaped_output\"; exit 0'"
       },
-      "notes": "Runs inside a Dockerized n8n container that has python3 installed and this repo mounted at /workspace/youtube_post_repeater. The node always exits successfully and passes the CLI exit status forward so the workflow can notify on real failures."
+      "notes": "Runs inside a Dockerized n8n container that has python3 installed and this repo mounted at /workspace/youtube_post_repeater. Set YPR_FIXTURE_FILE to force fixture-based test data through the Telegram delivery path. The node always exits successfully and passes the CLI exit status forward so the workflow can notify on real failures."
     },
     {
       "name": "Parse CLI Result",
       "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         700,
         230
       ],
       "parameters": {
-        "jsCode": "const input = $input.first();\nconst source = input && input.json ? input.json : {};\nconst telegramChatId = $env.TELEGRAM_CHAT_ID || '';\n\nif (!source.stdout) {\n  return [{\n    json: {\n      status: 20,\n      telegram_chat_id: telegramChatId,\n      payload: {},\n      route_type: 'error',\n      error_text: 'Parse CLI Result expected JSON input from Run CLI, but no stdout field was present. Execute the workflow from the trigger or run Run CLI first.',\n    },\n  }];\n}\n\nlet envelope;\ntry {\n  envelope = JSON.parse(source.stdout);\n} catch (error) {\n  return [{\n    json: {\n      status: 20,\n      telegram_chat_id: telegramChatId,\n      payload: {},\n      route_type: 'error',\n      error_text: `Parse CLI Result could not decode the Run CLI envelope: ${error.message}`,\n    },\n  }];\n}\n\nlet payload;\ntry {\n  payload = JSON.parse(envelope.stdout || '{}');\n} catch (error) {\n  return [{\n    json: {\n      status: Number(envelope.status || 20),\n      telegram_chat_id: telegramChatId,\n      payload: {},\n      route_type: 'error',\n      error_text: `Parse CLI Result could not decode the CLI payload JSON: ${error.message}`,\n    },\n  }];\n}\n\nconst status = Number(envelope.status || 0);\nconst base = {\n  status,\n  telegram_chat_id: telegramChatId,\n  payload,\n};\nif (status === 20 || payload.ok === false) {\n  return [{\n    json: {\n      ...base,\n      route_type: 'error',\n      error_text: [\n        'YouTube post repeater failed.',\n        `Channel: ${payload.channel || 'unknown'}`,\n        `Exit status: ${status}`,\n        payload.error ? `Error: ${payload.error}` : 'Error: CLI returned a non-success status without an error message.',\n      ].join('\\n'),\n    },\n  }];\n}\nreturn [{\n  json: {\n    ...base,\n    route_type: 'posts',\n  },\n}];"
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const input = $input.first();\nconst source = input && input.json ? input.json : {};\n\nif (!source.stdout) {\n  return [{\n    json: {\n      status: 20,\n      payload: {},\n      route_type: 'error',\n      error_text: 'Parse CLI Result expected JSON input from Run CLI, but no stdout field was present. Execute the workflow from the trigger or run Run CLI first.',\n    },\n  }];\n}\n\nlet envelope;\ntry {\n  envelope = JSON.parse(source.stdout);\n} catch (error) {\n  return [{\n    json: {\n      status: 20,\n      payload: {},\n      route_type: 'error',\n      error_text: `Parse CLI Result could not decode the Run CLI envelope: ${error.message}`,\n    },\n  }];\n}\n\nlet payload;\ntry {\n  payload = JSON.parse(envelope.stdout || '{}');\n} catch (error) {\n  return [{\n    json: {\n      status: Number(envelope.status || 20),\n      payload: {},\n      route_type: 'error',\n      error_text: `Parse CLI Result could not decode the CLI payload JSON: ${error.message}`,\n    },\n  }];\n}\n\nconst status = Number(envelope.status || 0);\nconst base = {\n  status,\n  payload,\n};\nif (status === 20 || payload.ok === false) {\n  return [{\n    json: {\n      ...base,\n      route_type: 'error',\n      error_text: [\n        'YouTube post repeater failed.',\n        `Channel: ${payload.channel || 'unknown'}`,\n        `Exit status: ${status}`,\n        payload.error ? `Error: ${payload.error}` : 'Error: CLI returned a non-success status without an error message.',\n      ].join('\\n'),\n    },\n  }];\n}\nreturn [{\n  json: {\n    ...base,\n    route_type: 'posts',\n  },\n}];"
       },
       "notes": "Parse the CLI result envelope. status=20 or payload.ok=false becomes an error-notification item; status=0 or 10 continues to post expansion."
     },
     {
       "name": "Route CLI Result",
       "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
       "position": [
         960,
         230
       ],
       "parameters": {
+        "mode": "rules",
         "dataType": "string",
         "value1": "={{$json.route_type}}",
-        "rules": [
-          {
-            "operation": "equal",
-            "value2": "posts"
-          },
-          {
-            "operation": "equal",
-            "value2": "error"
-          }
-        ]
+        "rules": {
+          "rules": [
+            {
+              "operation": "equal",
+              "value2": "posts",
+              "outputKey": "posts"
+            },
+            {
+              "operation": "equal",
+              "value2": "error",
+              "outputKey": "error"
+            }
+          ]
+        }
       },
       "notes": "Output 0=normal post flow, 1=error notification flow."
     },
     {
       "name": "Expand Posts",
       "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         1220,
         180
       ],
       "parameters": {
-        "jsCode": "const payload = $json.payload || {};\nreturn (payload.posts || []).map((post, index) => ({\n  json: {\n    channel: payload.channel,\n    fetched_at: payload.fetched_at,\n    post_index: index,\n    telegram_chat_id: $json.telegram_chat_id,\n    ...post,\n  },\n}));"
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const payload = $json.payload || {};\nconst hasUsableImage = (url) => typeof url === 'string' && url.trim() !== '' && !url.includes('example.com');\nconst hasUsableMediaGroup = (media) => Array.isArray(media) && media.length > 0 && media.every((item) => hasUsableImage(item?.media));\nreturn (payload.posts || []).map((post, index) => {\n  let deliveryType = post.delivery_type;\n  if (deliveryType === 'photo' && !hasUsableImage(post.images?.[0])) {\n    deliveryType = 'message';\n  }\n  if (deliveryType === 'media_group' && !hasUsableMediaGroup(post.media)) {\n    deliveryType = 'message';\n  }\n  return {\n    json: {\n      channel: payload.channel,\n      fetched_at: payload.fetched_at,\n      post_index: index,\n      ...post,\n      delivery_type: deliveryType,\n    },\n  };\n});"
       },
       "notes": "Turn payload.posts[] into one item per post. When status=10 this emits no items, so the workflow stops quietly."
     },
@@ -77,9 +89,15 @@
         1220,
         360
       ],
+      "credentials": {
+        "telegramApi": {
+          "id": "cSwsd3dn2T1Xo0tu",
+          "name": "Telegram account"
+        }
+      },
       "parameters": {
         "operation": "sendMessage",
-        "chatId": "={{$json.telegram_chat_id}}",
+        "chatId": "8567139854",
         "text": "={{$json.error_text}}"
       },
       "notes": "Sends a Telegram alert when the CLI returns a real failure."
@@ -87,39 +105,49 @@
     {
       "name": "Route Delivery Type",
       "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
       "position": [
         1480,
         180
       ],
       "parameters": {
+        "mode": "rules",
         "dataType": "string",
         "value1": "={{$json.delivery_type}}",
-        "rules": [
-          {
-            "operation": "equal",
-            "value2": "message"
-          },
-          {
-            "operation": "equal",
-            "value2": "photo"
-          },
-          {
-            "operation": "equal",
-            "value2": "media_group"
-          }
-        ]
+        "rules": {
+          "rules": [
+            {
+              "operation": "equal",
+              "value2": "message",
+              "outputKey": "message"
+            },
+            {
+              "operation": "equal",
+              "value2": "photo",
+              "outputKey": "photo"
+            },
+            {
+              "operation": "equal",
+              "value2": "media_group",
+              "outputKey": "media_group"
+            }
+          ]
+        }
       },
       "notes": "Output 0=message, 1=photo, 2=media_group."
     },
     {
       "name": "Prepare Message Chunks",
       "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         1740,
         50
       ],
       "parameters": {
-        "jsCode": "return ($json.message_chunks || []).map((chunk, index) => ({ json: { text: chunk, post_id: $json.post_id, chunk_index: index, telegram_chat_id: $json.telegram_chat_id } }));"
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "return ($json.message_chunks || []).map((chunk, index) => ({ json: { text: chunk, post_id: $json.post_id, chunk_index: index } }));"
       },
       "notes": "Use for delivery_type=message."
     },
@@ -130,9 +158,15 @@
         2000,
         50
       ],
+      "credentials": {
+        "telegramApi": {
+          "id": "cSwsd3dn2T1Xo0tu",
+          "name": "Telegram account"
+        }
+      },
       "parameters": {
         "operation": "sendMessage",
-        "chatId": "={{$json.telegram_chat_id}}",
+        "chatId": "8567139854",
         "text": "={{$json.text}}"
       },
       "notes": "Send each chunk as its own Telegram message. Attach your Telegram credentials after importing."
@@ -144,9 +178,15 @@
         1740,
         180
       ],
+      "credentials": {
+        "telegramApi": {
+          "id": "cSwsd3dn2T1Xo0tu",
+          "name": "Telegram account"
+        }
+      },
       "parameters": {
         "operation": "sendPhoto",
-        "chatId": "={{$json.telegram_chat_id}}",
+        "chatId": "8567139854",
         "file": "={{$json.images[0]}}",
         "caption": "={{$json.caption}}"
       },
@@ -159,9 +199,15 @@
         1740,
         310
       ],
+      "credentials": {
+        "telegramApi": {
+          "id": "cSwsd3dn2T1Xo0tu",
+          "name": "Telegram account"
+        }
+      },
       "parameters": {
         "operation": "sendMediaGroup",
-        "chatId": "={{$json.telegram_chat_id}}",
+        "chatId": "8567139854",
         "mediaGroup": "={{$json.media}}"
       },
       "notes": "Use for delivery_type=media_group. Attach your Telegram credentials after importing."
@@ -169,12 +215,15 @@
     {
       "name": "Prepare Follow-up Chunks",
       "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         2000,
         245
       ],
       "parameters": {
-        "jsCode": "return ($json.followup_message_chunks || []).map((chunk, index) => ({ json: { text: chunk, post_id: $json.post_id, chunk_index: index, telegram_chat_id: $json.telegram_chat_id } }));"
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "return ($json.followup_message_chunks || []).map((chunk, index) => ({ json: { text: chunk, post_id: $json.post_id, chunk_index: index } }));"
       },
       "notes": "Only emits items when caption was truncated."
     },
@@ -185,9 +234,15 @@
         2260,
         245
       ],
+      "credentials": {
+        "telegramApi": {
+          "id": "cSwsd3dn2T1Xo0tu",
+          "name": "Telegram account"
+        }
+      },
       "parameters": {
         "operation": "sendMessage",
-        "chatId": "={{$json.telegram_chat_id}}",
+        "chatId": "8567139854",
         "text": "={{$json.text}}"
       },
       "notes": "Send extra text chunks after photo/media_group when needed."
