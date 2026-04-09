@@ -9,6 +9,16 @@
         200,
         230
       ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
       "notes": "Run on your preferred interval."
     },
     {
