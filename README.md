@@ -125,7 +125,7 @@ includes normalization logic to map that JSON into the unified schema.
 Recommended `Execute Command` step:
 
 ```bash
-bash -lc 'cd /workspace/youtube_post_repeater && \
+sh -lc 'cd /workspace/youtube_post_repeater && \
 python3 app.py \
   --source primary \
   --channel https://www.youtube.com/@CHANNEL/community \

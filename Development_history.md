@@ -140,3 +140,5 @@ Additional follow-up work completed after the initial Docker integration:
   editor-only `Manual Trigger` branch.
 - Updated `.gitignore` so SQLite state files produced during local or n8n
   execution no longer show up as untracked repository changes.
+- Corrected n8n execution commands from `bash -lc` to `sh -lc` after verifying
+  the deployed `n8n-python:latest` container does not include `bash`.
